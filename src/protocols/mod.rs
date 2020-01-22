@@ -9,7 +9,6 @@ pub mod rc6;
 #[cfg(feature = "sbp")]
 pub mod sbp;
 
-
 #[cfg(feature = "nec")]
 pub use nec::Nec;
 #[cfg(feature = "rc5")]
@@ -19,7 +18,7 @@ pub use rc6::Rc6;
 #[cfg(feature = "sbp")]
 pub use sbp::Sbp;
 
-
+pub mod denon;
 
 /// Capture
 pub mod capture;
@@ -41,6 +40,8 @@ pub enum ProtocolId {
     Rc6 = 5,
     /// Samsung 36 bit protocol
     Sbp = 6,
+    /// Denon
+    Denon = 7,
 
     /// Logging
     Logging = 31,
