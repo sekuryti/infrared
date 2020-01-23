@@ -13,6 +13,7 @@ const DATA_HIGH: u32 = 480;
 const ZERO_LOW: u32 = 360;
 const ONE_LOW: u32 = 1200;
 
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum DenonState {
     Idle,
@@ -21,26 +22,26 @@ enum DenonState {
 }
 
 #[derive(Debug)]
-enum DenonPulseLengths {
+enum PulseWidth {
     SYNC,
     ZERO,
     ONE,
     FAIL,
 }
 
-impl Default for DenonPulseLengths {
+impl Default for PulseWidth {
     fn default() -> Self {
-        DenonPulseLengths::FAIL
+        PulseWidth::FAIL
     }
 }
 
-impl From<usize> for DenonPulseLengths {
+impl From<usize> for PulseWidth {
     fn from(value: usize) -> Self {
         match value {
-            0 => DenonPulseLengths::SYNC,
-            1 => DenonPulseLengths::ZERO,
-            2 => DenonPulseLengths::ONE,
-            _ => DenonPulseLengths::FAIL,
+            0 => PulseWidth::SYNC,
+            1 => PulseWidth::ZERO,
+            2 => PulseWidth::ONE,
+            _ => PulseWidth::FAIL,
         }
     }
 }
@@ -48,16 +49,15 @@ impl From<usize> for DenonPulseLengths {
 pub struct Denon {
     state: DenonState,
     pub buf: u64,
-    address: u16,
-    command: u32,
-    prev_ts: u32,
+    prev_rising: u32,
     prev_level: bool,
-    ranges: PulseWidthRange<DenonPulseLengths>,
+    ranges: PulseWidthRange<PulseWidth>,
 }
 
 pub struct Cmd {
     addr: u16,
     cmd: u8,
+    pub raw: u64,
 }
 
 impl Command for Cmd {
@@ -66,7 +66,7 @@ impl Command for Cmd {
 
     fn construct(addr: u16, cmd: u8) -> Self {
         Self {
-            addr, cmd,
+            addr, cmd, raw: 0,
         }
     }
 
@@ -105,9 +105,7 @@ impl Receiver for Denon {
         Denon {
             state: DenonState::Idle,
             buf: 0,
-            address: 0,
-            command: 0,
-            prev_ts: 0,
+            prev_rising: 0,
             prev_level: false,
             ranges,
         }
@@ -116,25 +114,34 @@ impl Receiver for Denon {
     fn event(&mut self, edge: bool, time: u32) -> State<Self::Cmd> {
 
         if edge {
-            let samples = time.wrapping_sub(self.prev_ts);
+            let samples = time.wrapping_sub(self.prev_rising);
             let pw = self.ranges.pulsewidth(samples);
-            self.prev_ts = time;
+
+            self.prev_rising = time;
 
             self.state = match (self.state, pw) {
-                (DenonState::Idle, DenonPulseLengths::SYNC) => DenonState::Data(0),
+                (DenonState::Idle, PulseWidth::SYNC) => DenonState::Data(0),
                 (DenonState::Idle, _) => DenonState::Idle,
-                (DenonState::Data(47), DenonPulseLengths::ZERO) => DenonState::Done,
-                (DenonState::Data(47), DenonPulseLengths::ONE) => DenonState::Done,
-                (DenonState::Data(idx), DenonPulseLengths::ZERO) => DenonState::Data(idx+1),
-                (DenonState::Data(idx), DenonPulseLengths::ONE) => { self.buf |= 1 << idx; DenonState::Data(idx+1) },
+                (DenonState::Data(47), PulseWidth::ZERO) => DenonState::Done,
+                (DenonState::Data(47), PulseWidth::ONE) => DenonState::Done,
+                (DenonState::Data(idx), PulseWidth::ZERO) => DenonState::Data(idx + 1),
+                (DenonState::Data(idx), PulseWidth::ONE) => {
+                    self.buf |= 1 << idx;
+                    DenonState::Data(idx + 1)
+                },
                 (DenonState::Data(idx), _) => DenonState::Idle,
                 (DenonState::Done, _) => DenonState::Done,
-            };
-
+            }
         }
 
         if self.state == DenonState::Done {
-            return State::Done(Cmd::construct(0,0));
+            return State::Done(
+                Cmd {
+                    addr: 0,
+                    cmd: 0,
+                    raw: self.buf,
+                }
+            );
         }
 
         State::Idle
@@ -143,5 +150,7 @@ impl Receiver for Denon {
     fn reset(&mut self) {
         self.state = DenonState::Idle;
         self.buf = 0;
+        self.prev_rising = 0;
+        self.prev_level = false;
     }
 }
