@@ -6,9 +6,9 @@ mod transmitter;
 pub use receiver::Rc5;
 pub use transmitter::Rc5Transmitter;
 
-const ADDR_MASK: u16 = 0b_0000_0111_1100_0000;
-const CMD_MASK: u16 = 0b_0000_0000_0011_1111;
-const START_MASK: u16 = 0b_0011_0000_0000_0000;
+const ADDR_MASK: u16   = 0b_0000_0111_1100_0000;
+const CMD_MASK: u16    = 0b_0000_0000_0011_1111;
+const START_MASK: u16  = 0b_0011_0000_0000_0000;
 const TOGGLE_MASK: u16 = 0b_0000_1000_0000_0000;
 
 const ADDR_SHIFT: u32 = 6;
@@ -56,25 +56,23 @@ impl Rc5Command {
 }
 
 impl Command for Rc5Command {
-    fn construct(addr: u16, cmd: u8) -> Self {
-        Rc5Command::new(addr as u8, cmd, false)
+    fn construct(addr: u32, cmd: u32) -> Self {
+        Rc5Command::new(addr as u8, cmd as u8, false)
     }
 
-    fn address(&self) -> u16 {
-        self.addr as u16
+    fn address(&self) -> u32 {
+        self.addr as u32
     }
 
-    fn command(&self) -> u8 {
-        self.cmd
+    fn data(&self) -> u32 {
+        self.cmd as u32
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::receiver::*;
-    use crate::transmitter::*;
-    use crate::protocols::rc5::{Rc5Command, Rc5Transmitter};
-    use crate::rc5::Rc5;
+    use crate::protocols::rc5::{Rc5, Rc5Command, Rc5Transmitter};
 
     #[test]
     fn rc5_command() {
@@ -91,7 +89,7 @@ mod tests {
         let mut recv = Rc5::new(40_000);
         let mut edge = false;
         let mut tot = 0;
-        let mut state = ReceiverState::Idle;
+        let mut state = State::Idle;
 
         for dist in dists.iter() {
             edge = !edge;
@@ -99,7 +97,7 @@ mod tests {
             state = recv.event(edge, tot);
         }
 
-        if let ReceiverState::Done(cmd) = state {
+        if let State::Done(cmd) = state {
             assert_eq!(cmd.addr, 20);
             assert_eq!(cmd.cmd, 9);
         } else {
@@ -109,6 +107,7 @@ mod tests {
 
     #[test]
     fn rc5_transmit() {
+        use crate::transmitter::{State, Statemachine};
         let mut tx = Rc5Transmitter::new(40_000);
 
         tx.load(Rc5Command::new(20, 9, false));
@@ -121,7 +120,7 @@ mod tests {
         for ts in 0..2000 {
             let state = tx.step(ts);
 
-            if let TransmitterState::Transmit(v) = state {
+            if let State::Transmit(v) = state {
                 if v != last_enable {
                     last_enable = v;
                     let delta = ts - last_ts;

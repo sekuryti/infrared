@@ -1,4 +1,4 @@
-use crate::{rc5::Rc5Command, ProtocolId};
+use crate::{protocols::rc5::Rc5Command, ProtocolId};
 
 use crate::remotecontrol_standardbutton;
 

@@ -1,5 +1,10 @@
-use crate::rc5::Rc5Command;
-use crate::transmitter::*;
+use crate::{
+    protocols::rc5::Rc5Command,
+    transmitter::{
+        Statemachine,
+        State as TxState,
+    }
+};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum State {
@@ -36,14 +41,14 @@ impl Rc5Transmitter {
     }
 }
 
-impl Transmitter<Rc5Command> for Rc5Transmitter {
+impl Statemachine<Rc5Command> for Rc5Transmitter {
     fn load(&mut self, cmd: Rc5Command) {
         self.state = State::Idle;
         self.cmd = cmd;
         self.bits = self.cmd.to_bits();
     }
 
-    fn step(&mut self, ts: u32) -> TransmitterState {
+    fn step(&mut self, ts: u32) -> TxState {
         use State::*;
 
         let nsamples = self.baseunits_since_last(ts);
@@ -73,10 +78,10 @@ impl Transmitter<Rc5Command> for Rc5Transmitter {
         if let State::Tx(bit, second_half) = newstate {
             let one = (self.bits & (1 << bit)) != 0;
             let pwm = (one && second_half) || (!one && !second_half);
-            return TransmitterState::Transmit(pwm);
+            return TxState::Transmit(pwm);
         }
 
-        TransmitterState::Idle
+        TxState::Idle
     }
 
     fn reset(&mut self) {
@@ -87,4 +92,4 @@ impl Transmitter<Rc5Command> for Rc5Transmitter {
 }
 
 #[cfg(feature = "embedded-hal")]
-impl crate::PwmTransmitter<Rc5Command> for Rc5Transmitter {}
+impl crate::transmitter::Transmitter<Rc5Command> for Rc5Transmitter {}

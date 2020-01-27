@@ -10,10 +10,10 @@ macro_rules! remotecontrol_standardbutton {
             type Button = StandardButton;
             type Command = $rccmd;
             const PROTOCOL_ID: ProtocolId = $protocol;
-            const ADDRESS: u16 = $rcaddr;
+            const ADDRESS: u32 = $rcaddr;
             const DEVICE: DeviceType = $rctype;
             const MODEL: &'static str = $rcmodel;
-            const MAPPING: &'static [(u8, StandardButton)] = &[ $(($cmd, StandardButton::$name),)+ ];
+            const BUTTONS: &'static [(u8, StandardButton)] = &[ $(($cmd, StandardButton::$name),)+ ];
 
             fn decode(cmd: Self::Command) -> Option<StandardButton> {
 
@@ -21,7 +21,7 @@ macro_rules! remotecontrol_standardbutton {
                     return None;
                 }
 
-                match cmd.command() {
+                match cmd.data() {
                     $($cmd => Some(StandardButton::$name),)+
                     _ => None,
                 }

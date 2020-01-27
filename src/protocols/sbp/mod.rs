@@ -9,7 +9,11 @@
 
 use crate::{
     Command, ProtocolId,
-    receiver::*,
+    receiver::{
+        Statemachine,
+        State,
+        Error,
+    },
     protocols::utils::Ranges,
 };
 
@@ -47,7 +51,9 @@ impl SbpCommand {
 }
 
 impl Command for SbpCommand {
-    fn construct(address: u16, command: u8) -> Self {
+    fn construct(address: u32, command: u32) -> Self {
+        let address = address as u16;
+        let command = command as u8;
         SbpCommand {
             address,
             command,
@@ -55,12 +61,12 @@ impl Command for SbpCommand {
         }
     }
 
-    fn address(&self) -> u16 {
-        self.address
+    fn address(&self) -> u32 {
+        self.address as u32
     }
 
-    fn command(&self) -> u8 {
-        self.command
+    fn data(&self) -> u32 {
+        self.command as u32
     }
 }
 
@@ -78,10 +84,10 @@ pub enum SbpState {
     // Command received
     Done,
     // In error state
-    Err(ReceiverError),
+    Err(Error),
 }
 
-pub type SbpResult = ReceiverState<SbpCommand>;
+pub type SbpResult = State<SbpCommand>;
 
 impl Sbp {
     pub fn new(samplerate: u32) -> Self {
@@ -100,25 +106,24 @@ impl Sbp {
 
     fn receiver_state(&self) -> SbpResult {
         use SbpState::*;
-        // Internalstate to ReceiverState
         match self.state {
-            Init => ReceiverState::Idle,
-            Done => ReceiverState::Done(SbpCommand::from_receiver(self.address, self.command)),
-            Err(e) => ReceiverState::Error(e),
-            _ => ReceiverState::Receiving,
+            Init => State::Idle,
+            Done => State::Done(SbpCommand::from_receiver(self.address, self.command)),
+            Err(e) => State::Error(e),
+            _ => State::Receiving,
         }
     }
 }
 
-impl ReceiverStateMachine for Sbp {
+impl Statemachine for Sbp {
     const ID: ProtocolId = ProtocolId::Sbp;
     type Cmd = SbpCommand;
 
-    fn for_samplerate(samplerate: u32) -> Self {
+    fn with_samplerate(samplerate: u32) -> Self {
         Self::new(samplerate)
     }
 
-    fn event(&mut self, rising: bool, sampletime: u32) -> ReceiverState<Self::Cmd> {
+    fn event(&mut self, rising: bool, sampletime: u32) -> State<Self::Cmd> {
         use SbpPulse::*;
         use SbpState::*;
 
@@ -147,10 +152,10 @@ impl ReceiverStateMachine for Sbp {
                     Address(bit + 1)
                 }
                 (Address(bit), Zero) => Address(bit + 1),
-                (Address(_), _) => Err(ReceiverError::Address(0)),
+                (Address(_), _) => Err(Error::Address(0)),
 
                 (Divider, Paus) => Command(0),
-                (Divider, _) => Err(ReceiverError::Data(0)),
+                (Divider, _) => Err(Error::Data(0)),
 
                 (Command(19), One) => {
                     self.command |= 1 << 19;
@@ -162,7 +167,7 @@ impl ReceiverStateMachine for Sbp {
                     Command(bit + 1)
                 }
                 (Command(bit), Zero) => Command(bit + 1),
-                (Command(_), _) => Err(ReceiverError::Data(0)),
+                (Command(_), _) => Err(Error::Data(0)),
 
                 (Done, _) => Done,
                 (Err(err), _) => Err(err),

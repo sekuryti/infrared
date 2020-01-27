@@ -9,10 +9,10 @@ use crate::ProtocolId;
 pub fn remotes() -> Vec<RemoteControlData> {
     // Pretty much every remote ever manufactured :-)
     vec![
-        RemoteControlData::construct::<Rc5CdPlayer>(),
-        RemoteControlData::construct::<SamsungTv>(),
-        RemoteControlData::construct::<SpecialForMp3>(),
-        RemoteControlData::construct::<SamsungBluRayPlayer>(),
+        RemoteControlData::new::<Rc5CdPlayer>(),
+        RemoteControlData::new::<SamsungTv>(),
+        RemoteControlData::new::<SpecialForMp3>(),
+        RemoteControlData::new::<SamsungBluRayPlayer>(),
     ]
 }
 
@@ -26,16 +26,16 @@ pub struct RemoteControlData {
 }
 
 impl RemoteControlData {
-    pub fn construct<REMOTE>() -> RemoteControlData
+    pub fn new<R>() -> RemoteControlData
     where
-        REMOTE: RemoteControl,
+        R: RemoteControl,
     {
         RemoteControlData {
-            addr: REMOTE::ADDRESS,
-            model: REMOTE::MODEL,
-            dtype: REMOTE::DEVICE,
-            protocol: REMOTE::PROTOCOL_ID,
-            mapping: REMOTE::MAPPING,
+            addr: R::ADDRESS,
+            model: R::MODEL,
+            dtype: R::DEVICE,
+            protocol: R::PROTOCOL_ID,
+            mapping: R::BUTTONS,
         }
     }
 }

@@ -1,41 +1,37 @@
-use crate::{Command, ProtocolId};
+//! Receiver state machine
+//!
+
+use crate::{Command, protocols::ProtocolId};
 
 /// Receiver state machine
-pub trait ReceiverStateMachine {
+pub trait Statemachine {
     /// Protocol id
     const ID: ProtocolId;
     /// The resulting command type
     type Cmd: Command;
 
-    /// Create
-    fn for_samplerate(samplerate: u32) -> Self;
+    /// New
+    fn with_samplerate(samplerate: u32) -> Self;
     /// Add event to state machine
-    fn event(&mut self, edge: bool, time: u32) -> ReceiverState<Self::Cmd>;
+    fn event(&mut self, edge: bool, time: u32) -> State<Self::Cmd>;
     /// Reset receiver
     fn reset(&mut self);
 }
 
 #[derive(PartialEq, Eq, Copy, Clone)]
 /// Protocol decoder state
-pub enum ReceiverState<CMD> {
+pub enum State<CMD> {
     Idle,
     Receiving,
     Done(CMD),
-    Error(ReceiverError),
+    Error(Error),
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-/// Receiver errror
-pub enum ReceiverError {
+/// Receiver error
+pub enum Error {
     Address(u32),
     Data(u32),
     Other(u32),
 }
 
-#[cfg(feature = "protocol-debug")]
-pub struct ReceiverDebug<STATE, EXTRA> {
-    pub state: STATE,
-    pub state_new: STATE,
-    pub delta: u16,
-    pub extra: EXTRA,
-}

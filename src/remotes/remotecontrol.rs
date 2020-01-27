@@ -18,17 +18,15 @@ pub trait RemoteControl {
     /// The IR protocol
     const PROTOCOL_ID: ProtocolId;
     /// Device adress
-    const ADDRESS: u16;
+    const ADDRESS: u32;
     /// Type of device that this remote controls
     const DEVICE: DeviceType = DeviceType::Generic;
     /// Remote control model
     const MODEL: &'static str = "<NONAME>";
     /// command byte to standardbutton mapping
-    const MAPPING: &'static [(u8, StandardButton)] = &[];
-
+    const BUTTONS: &'static [(u8, StandardButton)] = &[];
     /// Try to map a command into an Button for this remote
     fn decode(cmd: Self::Command) -> Option<Self::Button>;
-
     /// Encode a button into a command
     fn encode(button: Self::Button) -> Option<Self::Command>;
 }

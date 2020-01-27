@@ -1,7 +1,7 @@
 use embedded_hal::digital::v2::InputPin;
 
 use crate::{
-    receiver::{ReceiverState, ReceiverStateMachine},
+    receiver::{State, Statemachine},
 };
 
 
@@ -17,10 +17,10 @@ pub struct InfraredReceiver<PIN, SM> {
 impl<CMD, PIN, PINERR, SM> InfraredReceiver<PIN, SM>
 where
     CMD: crate::Command,
-    SM: ReceiverStateMachine<Cmd = CMD>,
+    SM: Statemachine<Cmd = CMD>,
     PIN: InputPin<Error = PINERR>,
 {
-    pub fn new_from_sm(pin: PIN, sm: SM) -> Self {
+    pub fn with_statemachine(pin: PIN, sm: SM) -> Self {
         Self {
             sm,
             pin,
@@ -30,7 +30,7 @@ where
 
     pub fn new(pin: PIN, samplerate: u32) -> Self {
         Self {
-            sm: SM::for_samplerate(samplerate),
+            sm: SM::with_samplerate(samplerate),
             pin,
             pinval: false,
         }
@@ -46,12 +46,12 @@ where
         if self.pinval != pinval {
             let r = self.sm.event(pinval, sample);
 
-            if let ReceiverState::Done(cmd) = r {
+            if let State::Done(cmd) = r {
                 self.sm.reset();
                 return Ok(Some(cmd));
             }
 
-            if let ReceiverState::Error(_err) = r {
+            if let State::Error(_err) = r {
                 self.sm.reset();
             }
 
@@ -84,7 +84,7 @@ macro_rules! create_receiver {
     impl<PIN, PINERR, $( $P, $C ),* > $name <PIN, $( $P ),* >
     where
         PIN: InputPin<Error = PINERR>,
-        $( $P: ReceiverStateMachine<Cmd = $C>),*,
+        $( $P: Statemachine<Cmd = $C>),*,
         $( $C: crate::Command ),*,
     {
         pub fn new_from_sm(pin: PIN, $( $N : $P ),* ) -> Self {
@@ -99,7 +99,7 @@ macro_rules! create_receiver {
             Self {
                 pin,
                 pinval: false,
-                $( $N: $P::for_samplerate(samplerate)),*,
+                $( $N: $P::with_samplerate(samplerate)),*,
             }
         }
 
@@ -115,11 +115,11 @@ macro_rules! create_receiver {
 
                 Ok(($(
                     match self.$N.event(pinval, ts) {
-                        ReceiverState::Done(cmd) => {
+                        State::Done(cmd) => {
                             self.$N.reset();
                             Some(cmd)
                         },
-                        ReceiverState::Error(_) => {
+                        State::Error(_) => {
                             self.$N.reset();
                             None
                         }

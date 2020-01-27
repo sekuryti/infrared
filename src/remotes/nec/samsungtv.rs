@@ -1,7 +1,7 @@
 use crate::remotecontrol_standardbutton;
 use crate::remotes::remotecontrol::{DeviceType, RemoteControl, StandardButton};
 
-use crate::nec::NecCommand;
+use crate::protocols::nec::NecCommand;
 use crate::ProtocolId;
 
 remotecontrol_standardbutton!(

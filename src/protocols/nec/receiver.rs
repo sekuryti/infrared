@@ -1,15 +1,12 @@
 use crate::{
     ProtocolId,
-    nec::{NecCommand, NecVariant, NecTiming},
+    protocols::nec::{NecCommand, NecVariant, NecTiming},
     protocols::utils::Ranges,
-    receiver::{ReceiverError, ReceiverState, ReceiverStateMachine},
+    receiver::{Error, State, Statemachine},
 };
 
-#[cfg(feature = "protocol-debug")]
-use crate::ReceiverDebug;
-
 /// Generic type for Nec Receiver
-pub struct NecType<NECTYPE> {
+pub struct NecType<N> {
     // State
     state: NecState,
     // Time of last event
@@ -21,10 +18,7 @@ pub struct NecType<NECTYPE> {
     // Last command (used by repeat)
     lastcommand: u32,
     // The type of Nec
-    nectype: core::marker::PhantomData<NECTYPE>,
-
-    #[cfg(feature = "protocol-debug")]
-    pub debug: ReceiverDebug<NecState, Ranges<PulseWidth>>,
+    nectype: core::marker::PhantomData<N>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -39,16 +33,16 @@ pub enum NecState {
     // Repeat command received
     RepeatDone,
     // In error state
-    Err(ReceiverError),
+    Err(Error),
 }
 
-impl<NECTYPE: NecVariant> NecType<NECTYPE> {
+impl<N: NecVariant> NecType<N> {
     pub fn new(samplerate: u32) -> Self {
-        let timing = NECTYPE::TIMING;
-        Self::new_from_timing(samplerate, timing)
+        let timing = N::TIMING;
+        Self::with_timing(samplerate, timing)
     }
 
-    fn new_from_timing(samplerate: u32, timing: &NecTiming) -> Self {
+    fn with_timing(samplerate: u32, timing: &NecTiming) -> Self {
         let nsamples = nsamples_from_timing(timing, samplerate);
         let ranges = Ranges::new(&nsamples);
 
@@ -58,38 +52,21 @@ impl<NECTYPE: NecVariant> NecType<NECTYPE> {
             bitbuf: 0,
             lastcommand: 0,
             nectype: core::marker::PhantomData,
-            #[cfg(feature = "protocol-debug")]
-            debug: ReceiverDebug {
-                state: NecState::Init,
-                state_new: NecState::Init,
-                delta: 0,
-                extra: ranges.clone(),
-            },
             ranges,
         }
     }
-
-    #[cfg(feature = "protocol-debug")]
-    fn update_debug(&mut self, newstate: NecState, nsamples: u32) {
-        self.debug.state = self.state;
-        self.debug.state_new = newstate;
-        self.debug.delta = nsamples as u16;
-    }
 }
 
-impl<NECTYPE> ReceiverStateMachine for NecType<NECTYPE>
-where
-    NECTYPE: NecVariant,
-{
-    const ID: ProtocolId = NECTYPE::PROTOCOL;
+impl<N: NecVariant> Statemachine for NecType<N> {
+    const ID: ProtocolId = N::PROTOCOL;
     type Cmd = NecCommand;
 
-    fn for_samplerate(samplerate: u32) -> Self {
-        let timing = NECTYPE::TIMING;
-        Self::new_from_timing(samplerate, timing)
+    fn with_samplerate(samplerate: u32) -> Self {
+        let timing = N::TIMING;
+        Self::with_timing(samplerate, timing)
     }
 
-    fn event(&mut self, rising: bool, time: u32) -> ReceiverState<Self::Cmd> {
+    fn event(&mut self, rising: bool, time: u32) -> State<Self::Cmd> {
         use NecState::*;
         use PulseWidth::*;
 
@@ -111,26 +88,23 @@ where
                 (Receiving(bit), One) => { self.bitbuf |= 1 << bit; Receiving(bit + 1) }
                 (Receiving(bit), Zero) => Receiving(bit + 1),
 
-                (Receiving(_), _) => Err(ReceiverError::Data(0)),
+                (Receiving(_), _) => Err(Error::Data(0)),
 
                 (Done, _) => Done,
                 (RepeatDone, _) => RepeatDone,
                 (Err(err), _) => Err(err),
             };
 
-            #[cfg(feature = "protocol-debug")]
-            self.update_debug(newstate, nsamples);
-
             self.last_event = time;
             self.state = newstate;
         }
 
         match self.state {
-            Init => ReceiverState::Idle,
-            Done => ReceiverState::Done(NECTYPE::decode_command(self.bitbuf)),
-            RepeatDone => ReceiverState::Done(NECTYPE::decode_command(self.lastcommand)),
-            Err(e) => ReceiverState::Error(e),
-            _ => ReceiverState::Receiving,
+            Init => State::Idle,
+            Done => State::Done(N::decode_command(self.bitbuf)),
+            RepeatDone => State::Done(N::decode_command(self.lastcommand)),
+            Err(e) => State::Error(e),
+            _ => State::Receiving,
         }
     }
 

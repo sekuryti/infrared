@@ -17,13 +17,16 @@ pub struct Nec16Variant;
 
 /// Nec
 pub type Nec = NecType<NecStandard>;
+
 /// Nec Samsung variant
 pub type NecSamsung = NecType<SamsungVariant>;
+
 /// Nec with 16 bit address, 8 bit command
 pub type Nec16 = NecType<Nec16Variant>;
 
 /// Nec - Standard transmitter
 pub type NecTransmitter = NecTypeTransmitter<NecStandard>;
+
 /// Nec - Samsung variant transmitter
 pub type NecSamsungTransmitter = NecTypeTransmitter<SamsungVariant>;
 
@@ -41,16 +44,16 @@ impl NecCommand {
 }
 
 impl Command for NecCommand {
-    fn construct(addr: u16, cmd: u8) -> Self {
-        NecCommand::new(addr, cmd)
+    fn construct(addr: u32, cmd: u32) -> Self {
+        NecCommand::new(addr as u16, cmd as u8)
     }
 
-    fn address(&self) -> u16 {
-        self.addr as u16
+    fn address(&self) -> u32 {
+        self.addr.into()
     }
 
-    fn command(&self) -> u8 {
-        self.cmd
+    fn data(&self) -> u32 {
+        self.cmd.into()
     }
 }
 

@@ -1,6 +1,9 @@
 use crate::{
-    nec::{NecCommand, NecVariant, Nec, Nec16Variant, NecStandard, SamsungVariant},
-    ReceiverState, ReceiverStateMachine,
+    protocols::nec::{NecCommand, NecVariant, Nec, Nec16Variant, NecStandard, SamsungVariant},
+    receiver::{
+        State,
+        Statemachine,
+    }
 };
 
 #[test]
@@ -14,7 +17,7 @@ fn standard_nec() {
     let mut recv = Nec::new(40_000);
     let mut edge = false;
     let mut tot = 0;
-    let mut state = ReceiverState::Idle;
+    let mut state = State::Idle;
 
     for dist in dists.iter() {
         edge = !edge;
@@ -22,7 +25,7 @@ fn standard_nec() {
         state = recv.event(edge, tot);
     }
 
-    if let ReceiverState::Done(cmd) = state {
+    if let State::Done(cmd) = state {
         assert_eq!(cmd.addr, 0);
         assert_eq!(cmd.cmd, 12);
     } else {

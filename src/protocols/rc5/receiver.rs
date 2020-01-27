@@ -1,12 +1,14 @@
 use core::ops::Range;
 
-use crate::rc5::Rc5Command;
 use crate::{
     ProtocolId,
-    receiver::*,
+    receiver::{
+        Statemachine,
+        State,
+        Error,
+    },
+    protocols::rc5::Rc5Command,
 };
-#[cfg(feature = "protocol-debug")]
-use crate::ReceiverDebug;
 
 pub struct Rc5 {
     samplerate: u32,
@@ -15,9 +17,6 @@ pub struct Rc5 {
     bitbuf: u16,
     last: u32,
     pub rc5cntr: u32,
-
-    #[cfg(feature = "protocol-debug")]
-    pub debug: ReceiverDebug<Rc5State, Option<u32>>,
 }
 
 impl Rc5 {
@@ -29,13 +28,6 @@ impl Rc5 {
             pinval: false,
             bitbuf: 0,
             rc5cntr: 0,
-            #[cfg(feature = "protocol-debug")]
-            debug: ReceiverDebug {
-                state: Rc5State::Idle,
-                state_new: Rc5State::Idle,
-                delta: 0,
-                extra: None,
-            },
         }
     }
 
@@ -63,19 +55,19 @@ pub enum Rc5State {
     Idle,
     Data(u8),
     Done,
-    Error(ReceiverError),
+    Err(Error),
 }
 
 const RISING: bool = true;
 const FALLING: bool = false;
 
-type Rc5Res = ReceiverState<Rc5Command>;
+type Rc5Res = State<Rc5Command>;
 
-impl ReceiverStateMachine for Rc5 {
+impl Statemachine for Rc5 {
     const ID: ProtocolId = ProtocolId::Rc5;
     type Cmd = Rc5Command;
 
-    fn for_samplerate(samplerate: u32) -> Self {
+    fn with_samplerate(samplerate: u32) -> Self {
         Self::new(samplerate)
     }
 
@@ -115,26 +107,18 @@ impl ReceiverStateMachine for Rc5 {
             (Data(bit), FALLING, Some(_)) if odd => Data(bit - 1),
 
             (Data(bit), _, Some(_)) => Data(bit),
-            (Data(_), _, None) => Error(ReceiverError::Data(delta as u32)),
+            (Data(_), _, None) => Err(Error::Data(delta as u32)),
             (Done, _, _) => Done,
-            (Error(err), _, _) => Error(err),
+            (Err(err), _, _) => Err(err),
         };
-
-        #[cfg(feature = "protocol-debug")]
-        {
-            self.debug.state = self.state;
-            self.debug.state_new = newstate;
-            self.debug.delta = delta;
-            self.debug.extra = rc5units;
-        }
 
         self.state = newstate;
 
         match self.state {
-            Idle => ReceiverState::Idle,
-            Done => ReceiverState::Done(Rc5Command::from_bits(self.bitbuf)),
-            Error(err) => ReceiverState::Error(err),
-            _ => ReceiverState::Receiving,
+            Idle => State::Idle,
+            Done => State::Done(Rc5Command::from_bits(self.bitbuf)),
+            Err(err) => State::Error(err),
+            _ => State::Receiving,
         }
     }
 
