@@ -14,7 +14,7 @@ use crate::{
         State,
         Error,
     },
-    protocols::utils::Ranges,
+    protocols::utils::PulseWidthRange,
 };
 
 #[derive(Debug)]
@@ -24,7 +24,7 @@ pub struct Sbp {
     command: u32,
     prev_sampletime: u32,
     prev_pinval: bool,
-    ranges: Ranges<SbpPulse>,
+    ranges: PulseWidthRange<SbpPulse>,
 }
 
 #[derive(Debug)]
@@ -92,7 +92,7 @@ pub type SbpResult = State<SbpCommand>;
 impl Sbp {
     pub fn new(samplerate: u32) -> Self {
         let nsamples = nsamples_from_timing(&TIMING, samplerate);
-        let ranges = Ranges::new(&nsamples);
+        let ranges = PulseWidthRange::new(&nsamples);
 
         Self {
             state: SbpState::Init,

@@ -1,7 +1,7 @@
 use crate::{
     ProtocolId,
     protocols::nec::{NecCommand, NecVariant, NecTiming},
-    protocols::utils::Ranges,
+    protocols::utils::PulseWidthRange,
     receiver::{Error, State, Statemachine},
 };
 
@@ -14,7 +14,7 @@ pub struct NecType<N> {
     // Data buffer
     pub bitbuf: u32,
     // Timing and tolerances
-    ranges: Ranges<PulseWidth>,
+    ranges: PulseWidthRange<PulseWidth>,
     // Last command (used by repeat)
     lastcommand: u32,
     // The type of Nec
@@ -44,7 +44,7 @@ impl<N: NecVariant> NecType<N> {
 
     fn with_timing(samplerate: u32, timing: &NecTiming) -> Self {
         let nsamples = nsamples_from_timing(timing, samplerate);
-        let ranges = Ranges::new(&nsamples);
+        let ranges = PulseWidthRange::new(&nsamples);
 
         Self {
             state: NecState::Init,
