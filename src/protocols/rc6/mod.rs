@@ -4,8 +4,8 @@ use core::ops::Range;
 
 use crate::{
     Command, ProtocolId,
-    receiver::{
-        Statemachine,
+    recv::{
+        Receiver,
         State as RxState,
         Error as RxError,
     },
@@ -111,7 +111,7 @@ pub enum Rc6State {
 const RISING: bool = true;
 const FALLING: bool = false;
 
-impl Statemachine for Rc6 {
+impl Receiver for Rc6 {
     const ID: ProtocolId = ProtocolId::Rc6;
     type Cmd = Rc6Cmd;
 
@@ -208,7 +208,7 @@ const fn range(len: u32, percent: u32) -> Range<u32> {
 
 #[cfg(test)]
 mod tests {
-    use crate::receiver::*;
+    use crate::recv::*;
     use crate::protocols::rc6::Rc6;
 
     #[test]

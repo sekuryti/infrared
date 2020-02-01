@@ -1,10 +1,10 @@
 use core::marker::PhantomData;
 use crate::{
-    transmitter::{Statemachine, State},
+    send::{Sender, State},
     protocols::nec::{NecCommand, NecTiming, NecVariant}
 };
 
-enum TransmitStateInternal {
+enum InternalState {
     Idle,
     Start,
     HeaderHigh,
@@ -14,8 +14,8 @@ enum TransmitStateInternal {
     Done,
 }
 
-pub struct NecTypeTransmitter<N> {
-    state: TransmitStateInternal,
+pub struct NecTypeSender<N> {
+    state: InternalState,
     samples: NSamples,
     last_ts: u32,
     cmd: u32,
@@ -30,13 +30,13 @@ struct NSamples {
     one: u32,
 }
 
-impl<N: NecVariant> NecTypeTransmitter<N> {
+impl<N: NecVariant> NecTypeSender<N> {
     pub fn new(samplerate: u32) -> Self {
         let period: u32 = (1 * 1000) / (samplerate / 1000);
 
         let samples = NSamples::new(period, &N::TIMING);
         Self {
-            state: TransmitStateInternal::Idle,
+            state: InternalState::Idle,
             samples,
             last_ts: 0,
             cmd: 0,
@@ -45,14 +45,14 @@ impl<N: NecVariant> NecTypeTransmitter<N> {
     }
 }
 
-impl<N: NecVariant> Statemachine<NecCommand> for NecTypeTransmitter<N> {
+impl<N: NecVariant> Sender<NecCommand> for NecTypeSender<N> {
     fn load(&mut self, cmd: NecCommand) {
         self.cmd = N::encode_command(cmd);
-        self.state = TransmitStateInternal::Start;
+        self.state = InternalState::Start;
     }
 
     fn step(&mut self, ts: u32) -> State {
-        use TransmitStateInternal::*;
+        use InternalState::*;
 
         let interval = ts.wrapping_sub(self.last_ts);
 
@@ -114,13 +114,13 @@ impl<N: NecVariant> Statemachine<NecCommand> for NecTypeTransmitter<N> {
 
     fn reset(&mut self) {
         self.cmd = 0;
-        self.state = TransmitStateInternal::Idle;
+        self.state = InternalState::Idle;
         self.last_ts = 0;
     }
 }
 
 #[cfg(feature = "embedded-hal")]
-impl<N: NecVariant> crate::transmitter::Transmitter<NecCommand> for NecTypeTransmitter<N> {}
+impl<N: NecVariant> crate::send::IrSender<NecCommand> for NecTypeSender<N> {}
 
 impl NSamples {
     pub const fn new(period: u32, pulsedistance: &NecTiming) -> Self {

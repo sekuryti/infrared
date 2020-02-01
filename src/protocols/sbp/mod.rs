@@ -9,8 +9,8 @@
 
 use crate::{
     Command, ProtocolId,
-    receiver::{
-        Statemachine,
+    recv::{
+        Receiver,
         State,
         Error,
     },
@@ -115,7 +115,7 @@ impl Sbp {
     }
 }
 
-impl Statemachine for Sbp {
+impl Receiver for Sbp {
     const ID: ProtocolId = ProtocolId::Sbp;
     type Cmd = SbpCommand;
 

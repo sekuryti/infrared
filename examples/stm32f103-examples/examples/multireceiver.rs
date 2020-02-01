@@ -18,10 +18,12 @@ use stm32f1xx_hal::{
 
 use infrared::{
     InfraredReceiver5,
-    nec::*,
-    rc5::*,
-    rc6::*,
-    sbp::*,
+    protocols::{
+        nec::*,
+        rc5::*,
+        rc6::*,
+        sbp::*,
+    },
     remotes::{
         RemoteControl,
         rc5::Rc5CdPlayer

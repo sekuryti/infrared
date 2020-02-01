@@ -17,9 +17,8 @@ use stm32f1xx_hal::{
 
 #[allow(unused_imports)]
 use infrared::{
-    InfraredReceiver,
-    nec::*,
-    rc5::*,
+    protocols::Nec,
+    IrReceiver,
     remotes::{
         rc5::*,
         nec::*,
@@ -27,15 +26,17 @@ use infrared::{
     },
 };
 
-const TIMER_FREQ: u32 = 40_000;
+// Pin connected to the receiver
+type RECV_PIN = PB8<Input<Floating>>;
 
+// Timer frequency
+const TIMER_FREQ: u32 = 20_000;
+
+// Our timer. Needs to be accessible in the interrupt handler.
 static mut TIMER: Option<CountDownTimer<TIM2>> = None;
 
-// Receiver
-static mut RECEIVER: Option<InfraredReceiver<
-    PB8<Input<Floating>>,
-    Nec,
->> = None;
+// Our Infrared receiver
+static mut RECEIVER: Option<IrReceiver<Nec, RECV_PIN>> = None;
 
 
 #[entry]
@@ -61,7 +62,7 @@ fn main() -> ! {
 
     timer.listen(Event::Update);
 
-    let receiver = InfraredReceiver::new(pin, TIMER_FREQ);
+    let receiver = IrReceiver::new(pin, TIMER_FREQ);
 
     // Safe because the devices are only used from in the interrupt handler
     unsafe {

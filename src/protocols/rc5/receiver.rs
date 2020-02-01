@@ -2,8 +2,8 @@ use core::ops::Range;
 
 use crate::{
     ProtocolId,
-    receiver::{
-        Statemachine,
+    recv::{
+        Receiver,
         State,
         Error,
     },
@@ -63,7 +63,7 @@ const FALLING: bool = false;
 
 type Rc5Res = State<Rc5Command>;
 
-impl Statemachine for Rc5 {
+impl Receiver for Rc5 {
     const ID: ProtocolId = ProtocolId::Rc5;
     type Cmd = Rc5Command;
 

@@ -1,28 +1,28 @@
 use embedded_hal::digital::v2::InputPin;
 
 use crate::{
-    receiver::{State, Statemachine},
+    recv::{State, Receiver},
 };
 
 
 /// Embedded hal Receiever
-pub struct InfraredReceiver<PIN, SM> {
-    /// The State Machine
-    sm: SM,
+pub struct IrReceiver<RECV, PIN> {
+    /// The receiver state machine
+    recv: RECV,
     /// The pin used
     pin: PIN,
     pinval: bool,
 }
 
-impl<CMD, PIN, PINERR, SM> InfraredReceiver<PIN, SM>
+impl<CMD, PIN, PINERR, RECV> IrReceiver<RECV, PIN>
 where
     CMD: crate::Command,
-    SM: Statemachine<Cmd = CMD>,
+    RECV: Receiver<Cmd = CMD>,
     PIN: InputPin<Error = PINERR>,
 {
-    pub fn with_statemachine(pin: PIN, sm: SM) -> Self {
+    pub fn with_receiver(recv: RECV, pin: PIN) -> Self {
         Self {
-            sm,
+            recv,
             pin,
             pinval: false,
         }
@@ -30,7 +30,7 @@ where
 
     pub fn new(pin: PIN, samplerate: u32) -> Self {
         Self {
-            sm: SM::with_samplerate(samplerate),
+            recv: RECV::with_samplerate(samplerate),
             pin,
             pinval: false,
         }
@@ -44,15 +44,15 @@ where
         let pinval = self.pin.is_low()?;
 
         if self.pinval != pinval {
-            let r = self.sm.event(pinval, sample);
+            let r = self.recv.event(pinval, sample);
 
             if let State::Done(cmd) = r {
-                self.sm.reset();
+                self.recv.reset();
                 return Ok(Some(cmd));
             }
 
             if let State::Error(_err) = r {
-                self.sm.reset();
+                self.recv.reset();
             }
 
             self.pinval = pinval;
@@ -75,19 +75,19 @@ macro_rules! create_receiver {
 ($name:ident, [ $( ($N:ident, $P:ident, $C:ident) ),* ]) =>
 {
     /// HAL receiver
-    pub struct $name<PIN, $( $P ),* > {
+    pub struct $name<$( $P ),* , PIN> {
         pin: PIN,
         pinval: bool,
         $( $N : $P ),*
     }
 
-    impl<PIN, PINERR, $( $P, $C ),* > $name <PIN, $( $P ),* >
+    impl<PIN, PINERR, $( $P, $C ),* > $name <$( $P ),* , PIN>
     where
         PIN: InputPin<Error = PINERR>,
-        $( $P: Statemachine<Cmd = $C>),*,
+        $( $P: Receiver<Cmd = $C>),*,
         $( $C: crate::Command ),*,
     {
-        pub fn new_from_sm(pin: PIN, $( $N : $P ),* ) -> Self {
+        pub fn with_receivers($( $N : $P ),* , pin: PIN) -> Self {
             Self {
                 pin,
                 pinval: false,
@@ -135,10 +135,10 @@ macro_rules! create_receiver {
     };
 }
 
-create_receiver!(InfraredReceiver2, [(recv1, RECV1, CMD1), (recv2, RECV2, CMD2)]);
+create_receiver!(IrReceiver2, [(recv1, RECV1, CMD1), (recv2, RECV2, CMD2)]);
 
 create_receiver!(
-    InfraredReceiver3,
+    IrReceiver3,
     [
         (recv1, RECV1, CMD1),
         (recv2, RECV2, CMD2),
@@ -147,7 +147,7 @@ create_receiver!(
 );
 
 create_receiver!(
-    InfraredReceiver4,
+    IrReceiver4,
     [
         (recv1, RECV1, CMD1),
         (recv2, RECV2, CMD2),
@@ -156,7 +156,7 @@ create_receiver!(
     ]
 );
 create_receiver!(
-    InfraredReceiver5,
+    IrReceiver5,
     [
         (recv1, RECV1, CMD1),
         (recv2, RECV2, CMD2),

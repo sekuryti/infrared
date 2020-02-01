@@ -2,14 +2,14 @@
 
 #[macro_use]
 pub mod receiver;
-pub mod transmitter;
+pub mod send;
 
 #[cfg(test)]
 mod tests;
 
 use crate::{Command, ProtocolId};
 pub use receiver::NecType;
-pub use transmitter::NecTypeTransmitter;
+pub use send::NecTypeSender;
 
 pub struct NecStandard;
 pub struct SamsungVariant;
@@ -25,10 +25,10 @@ pub type NecSamsung = NecType<SamsungVariant>;
 pub type Nec16 = NecType<Nec16Variant>;
 
 /// Nec - Standard transmitter
-pub type NecTransmitter = NecTypeTransmitter<NecStandard>;
+pub type NecTransmitter = NecTypeSender<NecStandard>;
 
 /// Nec - Samsung variant transmitter
-pub type NecSamsungTransmitter = NecTypeTransmitter<SamsungVariant>;
+pub type NecSamsungTransmitter = NecTypeSender<SamsungVariant>;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 /// Nec Command

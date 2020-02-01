@@ -9,6 +9,18 @@ pub mod rc6;
 #[cfg(feature = "sbp")]
 pub mod sbp;
 
+
+#[cfg(feature = "nec")]
+pub use nec::Nec;
+#[cfg(feature = "rc5")]
+pub use rc5::Rc5;
+#[cfg(feature = "rc6")]
+pub use rc6::Rc6;
+#[cfg(feature = "sbp")]
+pub use sbp::Sbp;
+
+
+
 /// Capture
 pub mod capture;
 

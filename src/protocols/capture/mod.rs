@@ -1,7 +1,7 @@
 use crate::{
     Command,
     ProtocolId,
-    receiver::{State, Statemachine}
+    recv::{State, Receiver}
 };
 
 const BUF_LEN: usize = 128;
@@ -37,7 +37,7 @@ impl Command for () {
     }
 }
 
-impl Statemachine for Capture {
+impl Receiver for Capture {
     const ID: ProtocolId = ProtocolId::Logging;
     type Cmd = ();
 

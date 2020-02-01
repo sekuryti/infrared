@@ -14,7 +14,7 @@ use stm32f1xx_hal::{
 };
 
 use infrared::{
-    Transmitter,
+    send::Sender,
     PwmTransmitter,
     rc5::*,
 };

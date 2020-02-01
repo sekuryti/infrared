@@ -2,9 +2,9 @@
 use crate::Command;
 
 mod receiver;
-mod transmitter;
+mod send;
 pub use receiver::Rc5;
-pub use transmitter::Rc5Transmitter;
+pub use send::Rc5Sender;
 
 const ADDR_MASK: u16   = 0b_0000_0111_1100_0000;
 const CMD_MASK: u16    = 0b_0000_0000_0011_1111;
@@ -71,8 +71,8 @@ impl Command for Rc5Command {
 
 #[cfg(test)]
 mod tests {
-    use crate::receiver::*;
-    use crate::protocols::rc5::{Rc5, Rc5Command, Rc5Transmitter};
+    use crate::recv::*;
+    use crate::protocols::rc5::{Rc5, Rc5Command, Rc5Sender};
 
     #[test]
     fn rc5_command() {
@@ -107,8 +107,8 @@ mod tests {
 
     #[test]
     fn rc5_transmit() {
-        use crate::transmitter::{State, Statemachine};
-        let mut tx = Rc5Transmitter::new(40_000);
+        use crate::send::{State, Sender};
+        let mut tx = Rc5Sender::new(40_000);
 
         tx.load(Rc5Command::new(20, 9, false));
 

@@ -2,7 +2,7 @@ use crate::{
     ProtocolId,
     protocols::nec::{NecCommand, NecVariant, NecTiming},
     protocols::utils::PulseWidthRange,
-    receiver::{Error, State, Statemachine},
+    recv::{Error, State, Receiver},
 };
 
 /// Generic type for Nec Receiver
@@ -57,7 +57,7 @@ impl<N: NecVariant> NecType<N> {
     }
 }
 
-impl<N: NecVariant> Statemachine for NecType<N> {
+impl<N: NecVariant> Receiver for NecType<N> {
     const ID: ProtocolId = N::PROTOCOL;
     type Cmd = NecCommand;
 

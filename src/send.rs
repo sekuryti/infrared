@@ -2,19 +2,19 @@
 //!
 
 #[derive(Debug)]
-/// Transmitter state
+/// Sender state
 pub enum State {
-    /// Transmitter is ready for transmitting
+    /// Sender is ready for transmitting
     Idle,
     /// Transmitting
     Transmit(bool),
-    /// Error state
+    /// Error
     Error,
 }
 
-/// Transmitter
-pub trait Statemachine<CMD> {
-    /// Load command into transmitter
+/// Sender
+pub trait Sender<CMD> {
+    /// Load command into the sender
     fn load(&mut self, cmd: CMD);
     /// Step the transfer loop
     fn step(&mut self, ts: u32) -> State;
@@ -23,10 +23,10 @@ pub trait Statemachine<CMD> {
 }
 
 #[cfg(feature = "embedded-hal")]
-/// Embedded hal pwm transmitter
-pub trait Transmitter<CMD>: Statemachine<CMD> {
+/// Embedded hal IR Sender
+pub trait IrSender<CMD>: Sender<CMD> {
     /// Step the transmit loop and output on `pwm`
-    fn pwmstep<PWMPIN, DUTY>(&mut self, ts: u32, pwm: &mut PWMPIN) -> State
+    fn step_pwm<PWMPIN, DUTY>(&mut self, ts: u32, pwm: &mut PWMPIN) -> State
     where
         PWMPIN: embedded_hal::PwmPin<Duty = DUTY>,
     {

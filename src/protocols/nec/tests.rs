@@ -1,8 +1,8 @@
 use crate::{
     protocols::nec::{NecCommand, NecVariant, Nec, Nec16Variant, NecStandard, SamsungVariant},
-    receiver::{
+    recv::{
         State,
-        Statemachine,
+        Receiver,
     }
 };
 
