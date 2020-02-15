@@ -14,9 +14,8 @@ use stm32f1xx_hal::{
 };
 
 use infrared::{
-    send::Sender,
-    PwmTransmitter,
-    rc5::*,
+    send::{IrSender, Sender},
+    protocols::rc5::*,
 };
 
 use infrared::remotes::{
@@ -29,7 +28,7 @@ const TIMER_FREQ: u32 = 20_000;
 // Global timer
 static mut TIMER: Option<CountDownTimer<TIM2>> = None;
 // transmitter
-static mut TRANSMITTER: Option<Rc5Transmitter> = None;
+static mut TRANSMITTER: Option<Rc5Sender> = None;
 // Pwm channel
 static mut PWM: Option<Pwm<TIM4, C4>> = None;
 
@@ -68,7 +67,7 @@ fn main() -> ! {
     // Safe because the devices are only used in the interrupt handler
     unsafe {
         TIMER.replace(timer);
-        TRANSMITTER.replace(Rc5Transmitter::new(TIMER_FREQ));
+        TRANSMITTER.replace(Rc5Sender::new(TIMER_FREQ));
         PWM.replace(pwm);
     }
 
@@ -104,7 +103,7 @@ fn TIM2() {
         transmitter.load(cmd);
     }
 
-    transmitter.pwmstep(*COUNT, pwm);
+    transmitter.step_pwm(*COUNT, pwm);
 
     *COUNT = COUNT.wrapping_add(1);
 }

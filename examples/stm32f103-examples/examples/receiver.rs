@@ -27,7 +27,7 @@ use infrared::{
 };
 
 // Pin connected to the receiver
-type RECV_PIN = PB8<Input<Floating>>;
+type RecvPin = PB8<Input<Floating>>;
 
 // Timer frequency
 const TIMER_FREQ: u32 = 20_000;
@@ -36,7 +36,7 @@ const TIMER_FREQ: u32 = 20_000;
 static mut TIMER: Option<CountDownTimer<TIM2>> = None;
 
 // Our Infrared receiver
-static mut RECEIVER: Option<IrReceiver<Nec, RECV_PIN>> = None;
+static mut RECEIVER: Option<IrReceiver<Nec, RecvPin>> = None;
 
 
 #[entry]
