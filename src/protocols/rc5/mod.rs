@@ -56,16 +56,19 @@ impl Rc5Command {
 }
 
 impl Command for Rc5Command {
-    fn construct(addr: u32, cmd: u32) -> Self {
+    type Addr = u8;
+    type Data = u8;
+
+    fn construct(addr: u8, cmd: u8) -> Self {
         Rc5Command::new(addr as u8, cmd as u8, false)
     }
 
-    fn address(&self) -> u32 {
-        self.addr as u32
+    fn address(&self) -> u8 {
+        self.addr
     }
 
-    fn data(&self) -> u32 {
-        self.cmd as u32
+    fn data(&self) -> u8 {
+        self.cmd
     }
 }
 

@@ -35,16 +35,19 @@ impl Rc6Cmd {
 }
 
 impl Command for Rc6Cmd {
-    fn construct(addr: u32, cmd: u32) -> Self {
-        Rc6Cmd::new(addr as u8, cmd as u8)
+    type Addr = u8;
+    type Data = u8;
+
+    fn construct(addr: u8, cmd: u8) -> Self {
+        Rc6Cmd::new(addr, cmd)
     }
 
-    fn address(&self) -> u32 {
-        self.addr as u32
+    fn address(&self) -> u8 {
+        self.addr
     }
 
-    fn data(&self) -> u32 {
-        self.cmd as u32
+    fn data(&self) -> u8 {
+        self.cmd
     }
 }
 

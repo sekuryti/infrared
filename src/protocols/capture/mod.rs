@@ -25,15 +25,16 @@ pub struct Capture {
 
 
 impl Command for () {
-    fn construct(_addr: u32, _cmd: u32) -> Self {
+    type Addr = ();
+    type Data = ();
+
+    fn construct(_addr: (), _cmd: ()) -> Self {
     }
 
-    fn address(&self) -> u32 {
-        0
+    fn address(&self) -> () {
     }
 
-    fn data(&self) -> u32 {
-        0
+    fn data(&self) -> () {
     }
 }
 

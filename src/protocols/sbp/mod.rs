@@ -51,9 +51,10 @@ impl SbpCommand {
 }
 
 impl Command for SbpCommand {
-    fn construct(address: u32, command: u32) -> Self {
-        let address = address as u16;
-        let command = command as u8;
+    type Addr = u16;
+    type Data = u8;
+
+    fn construct(address: u16, command: u8) -> Self {
         SbpCommand {
             address,
             command,
@@ -61,12 +62,12 @@ impl Command for SbpCommand {
         }
     }
 
-    fn address(&self) -> u32 {
-        self.address as u32
+    fn address(&self) -> u16 {
+        self.address
     }
 
-    fn data(&self) -> u32 {
-        self.command as u32
+    fn data(&self) -> u8 {
+        self.command
     }
 }
 

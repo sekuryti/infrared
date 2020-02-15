@@ -28,10 +28,16 @@ pub use hal::{
 
 /// Remote control command trait
 pub trait Command {
-    fn construct(addr: u32, cmd: u32) -> Self;
+    type Addr;
+    type Data;
+
+    /// Constuct a command
+    fn construct(addr: Self::Addr, data: Self::Data) -> Self;
+
     /// Command address
-    fn address(&self) -> u32;
+    fn address(&self) -> Self::Addr;
+
     /// Get the data associated with the command
-    fn data(&self) -> u32;
+    fn data(&self) -> Self::Data;
 }
 

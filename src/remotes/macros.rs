@@ -2,7 +2,7 @@
 macro_rules! remotecontrol_standardbutton {
     ( $rcname:tt, $protocol:path, $rcmodel:expr, $rctype:path, $rcaddr:expr, $rccmd:tt, [$( ($cmd:expr, $name:tt) ),* $(,)?] ) => {
 
-        use crate::Command as _;
+        use crate::Command;
 
         pub struct $rcname;
 
@@ -17,7 +17,7 @@ macro_rules! remotecontrol_standardbutton {
 
             fn decode(cmd: Self::Command) -> Option<StandardButton> {
 
-                if Self::ADDRESS != cmd.address() {
+                if Self::ADDRESS != cmd.address() as u32 {
                     return None;
                 }
 
@@ -33,7 +33,8 @@ macro_rules! remotecontrol_standardbutton {
                     _ => None,
                 };
 
-                stdcmd.map(|cmd| $rccmd::construct(Self::ADDRESS, cmd))
+                stdcmd
+                    .map(|cmd| $rccmd::construct(Self::ADDRESS as <$rccmd as Command>::Addr, cmd))
             }
         }
     };
