@@ -28,8 +28,8 @@ pub use hal::{
 
 /// Remote control command trait
 pub trait Command {
-    type Addr;
-    type Data;
+    type Addr: Into<u32>;
+    type Data: Into<u32>;
 
     /// Constuct a command
     fn construct(addr: Self::Addr, data: Self::Data) -> Self;

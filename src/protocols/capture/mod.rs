@@ -8,7 +8,7 @@ const BUF_LEN: usize = 128;
 
 /// Receiver that doesn't do any decoding of the incoming signal
 /// Instead it saves the distance between the edges for later processing
-pub struct Capture {
+pub struct Capturing {
     /// Samplerate
     pub samplerate: u32,
     /// Saved edges
@@ -20,27 +20,32 @@ pub struct Capture {
     /// Samplenum with pin change
     pub prev_samplenum: u32,
     /// Our state
-    pub state: State<()>,
+    pub state: State<NoCommand>,
 }
 
+#[derive(Eq, PartialEq, Copy, Clone)]
+pub struct NoCommand;
 
-impl Command for () {
-    type Addr = ();
-    type Data = ();
+impl Command for NoCommand {
+    type Addr = u32;
+    type Data = u32;
 
-    fn construct(_addr: (), _cmd: ()) -> Self {
+    fn construct(_addr: u32, _cmd: u32) -> Self {
+        NoCommand
     }
 
-    fn address(&self) -> () {
+    fn address(&self) -> Self::Addr {
+        0
     }
 
-    fn data(&self) -> () {
+    fn data(&self) -> Self::Data {
+        0
     }
 }
 
-impl Receiver for Capture {
+impl Receiver for Capturing {
     const ID: ProtocolId = ProtocolId::Logging;
-    type Cmd = ();
+    type Cmd = NoCommand;
 
     fn with_samplerate(samplerate: u32) -> Self {
         Self::new(samplerate)
@@ -61,7 +66,7 @@ impl Receiver for Capture {
         self.n_edges += 1;
 
         if self.n_edges == BUF_LEN {
-            self.state = State::Done(());
+            self.state = State::Done(NoCommand);
         }
 
         self.state
@@ -79,7 +84,7 @@ impl Receiver for Capture {
     }
 }
 
-impl Capture {
+impl Capturing {
     pub const fn new(samplerate: u32) -> Self {
         Self {
             edges: [0; BUF_LEN],
@@ -92,7 +97,7 @@ impl Capture {
     }
 
     fn ready(&self) -> bool {
-        !(self.state == State::Done(()))
+        !(self.state == State::Done(NoCommand))
     }
 
     pub fn delta(&self, ts: u32) -> u16 {

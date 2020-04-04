@@ -19,7 +19,7 @@ pub fn remotes() -> Vec<RemoteControlData> {
 #[derive(Debug)]
 pub struct RemoteControlData {
     pub model: &'static str,
-    pub addr: u16,
+    pub addr: u32,
     pub protocol: ProtocolId,
     pub dtype: DeviceType,
     pub mapping: &'static [(u8, StandardButton)],
