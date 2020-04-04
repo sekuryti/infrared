@@ -17,7 +17,7 @@ macro_rules! remotecontrol_standardbutton {
 
             fn decode(cmd: Self::Command) -> Option<StandardButton> {
 
-                if Self::ADDRESS != cmd.address() as u32 {
+                if Self::ADDRESS != cmd.address().into() {
                     return None;
                 }
 
