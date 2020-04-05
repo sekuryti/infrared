@@ -34,7 +34,11 @@ where
 
 const fn pulserange(units: u32, tolerance: u32) -> Range<u32> {
     let tol = (units * tolerance) / 100;
-    (units - tol..units + tol)
+
+    Range {
+        start: units - tol,
+        end: units + tol,
+    }
 }
 
 
