@@ -28,7 +28,8 @@ pub struct Nec16;
 pub struct NecCommand<VARIANT: NecVariant + ?Sized = NecStandard> {
     pub addr: u16,
     pub cmd: u8,
-    var: PhantomData<VARIANT>, //pub repeat: bool,
+    var: PhantomData<VARIANT>
+    //pub repeat: bool,
 }
 
 impl<V: NecVariant> NecCommand<V> {
