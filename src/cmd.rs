@@ -15,6 +15,8 @@ pub trait Command {
     fn protocol(&self) -> Protocol {
         Protocol::Unknown
     }
+
+    fn to_pulsetrain(&self, buf: &mut [u16]) {}
 }
 
 #[derive(Debug, Copy, Clone)]

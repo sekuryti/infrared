@@ -1,6 +1,9 @@
 //! Transmitter state machine
 //!
 
+use crate::Command;
+use core::marker::PhantomData;
+
 #[derive(Debug)]
 /// Sender state
 pub enum State {
@@ -36,5 +39,35 @@ pub trait PwmPinSender<CMD>: Sender<CMD> {
             _ => pwm.disable(),
         }
         state
+    }
+}
+
+pub struct BufSender {
+    pub buf: [u16; 96],
+    pub len: usize,
+}
+
+impl BufSender {
+
+    pub fn new() -> Self {
+        Self {
+            buf: [0; 96],
+            len: usize,
+        }
+    }
+
+    pub fn to_pulsetrain<C: Command>(&mut self, c: C) {
+        c.to_pulsetrain(&mut self.buf);
+    }
+}
+
+pub struct PwmSender<C: Command> {
+    cmd: Option<C>,
+}
+
+impl<C: Command> PwmSender<C> {
+
+    pub fn load(&mut self, c: CMD) {
+        self.cmd = Some(c);
     }
 }
