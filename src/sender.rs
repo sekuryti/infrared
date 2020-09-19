@@ -194,7 +194,7 @@ impl<'a> Iterator for PulsetrainIterator<'a> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, Some(self.pulses.len()))
+        (self.index, Some(self.pulses.len()))
     }
 }
 
