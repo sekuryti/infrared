@@ -43,15 +43,15 @@ pub trait PwmPinSender<CMD>: Sender<CMD> {
     }
 }
 
-pub struct HalSender<'a, PWMPIN, DUTY>
+pub struct HalSender<PWMPIN, DUTY>
 where
     PWMPIN: embedded_hal::PwmPin<Duty = DUTY>,
 {
-    pts: PulsetrainSender<'a>,
+    pts: PulsetrainSender,
     pin: PWMPIN,
 }
 
-impl<'a, PWMPIN, DUTY> HalSender<'a, PWMPIN, DUTY>
+impl<'a, PWMPIN, DUTY> HalSender<PWMPIN, DUTY>
     where
         PWMPIN: embedded_hal::PwmPin<Duty = DUTY>,
 {
@@ -62,53 +62,63 @@ impl<'a, PWMPIN, DUTY> HalSender<'a, PWMPIN, DUTY>
             pin
         }
     }
+
+    pub fn tick(&mut self) {
+        match self.pts.tick() {
+            State::Idle => {
+                self.pin.disable();
+            }
+            State::Transmit(enable) => {
+                if enable {
+                    self.pin.enable();
+                } else {
+                    self.pin.disable();
+                }
+            }
+            State::Error => {
+                self.pin.disable()
+            }
+        }
+    }
 }
 
 
-pub struct PulsetrainSender<'a> {
+pub struct PulsetrainSender {
     ptb: PulsetrainBuffer,
-    iter: PulsetrainIterator<'a>,
-    /// Last state change
-    last: u32,
-    /// Delta samples to next state change
-    dist: Option<u16>,
+    index: usize,
     state: State,
+    last: u32,
 }
 
-impl<'a> PulsetrainSender<'a> {
+impl PulsetrainSender {
 
     pub fn new(samplerate: u32) -> Self {
         let ptb = PulsetrainBuffer::with_samplerate(samplerate);
         Self {
             ptb,
-            iter: PulsetrainIterator {
-                pulses: &[],
-                index: 0
-            },
+            index: 0,
+            state: State::Idle,
             last: 0,
-            dist: None,
-            state: State::Idle
         }
     }
 
-    pub fn load(&'a mut self, c: impl Command) {
+    /// Load command into internal buffer
+    pub fn load(&mut self, c: impl Command) {
         self.ptb.load(c);
-        self.iter = self.ptb.into_iter();
-        self.dist = self.iter.next();
         self.state = State::Idle;
     }
 
-    pub fn poll(&mut self, ts: u32) -> State {
+    pub fn tick(&mut self, ts: u32) -> State {
 
-        if let Some(dt) = self.dist {
-            if ts - self.last >= dt.into() {
-                // State change
+        if let Some(dist) = self.ptb.get(self.index) {
+            if ts.wrapping_sub(self.last) >= u32::from(dist) {
+
                 let newstate = match self.state {
                     State::Idle | State::Transmit(false) => State::Transmit(true),
                     _ => State::Transmit(false),
                 };
 
-                self.dist = self.iter.next();
+                self.index += 1;
 
                 if self.state != newstate {
                     self.last = ts;
@@ -152,6 +162,10 @@ impl PulsetrainBuffer {
         for i in 0 .. self.len {
             self.buf[i] = self.buf[i] / self.scaler;
         }
+    }
+
+    pub fn get(&self, index: usize) -> Option<u16> {
+        self.buf.get(index).cloned()
     }
 }
 
