@@ -9,16 +9,20 @@ use crate::{
     Command,
 };
 
+mod tests;
+
 #[derive(Debug)]
-pub struct Rc6Cmd {
+pub struct Rc6Command {
+    pub mode: u8,
     pub addr: u8,
     pub cmd: u8,
     pub toggle: bool,
 }
 
-impl Rc6Cmd {
+impl Rc6Command {
     pub fn new(addr: u8, cmd: u8) -> Self {
         Self {
+            mode: 0,
             addr,
             cmd,
             toggle: false,
@@ -28,13 +32,18 @@ impl Rc6Cmd {
     pub fn from_bits(bits: u32, toggle: bool) -> Self {
         let addr = (bits >> 8) as u8;
         let cmd = (bits & 0xFF) as u8;
-        Self { addr, cmd, toggle }
+        Self { mode: 0, addr, cmd, toggle }
+    }
+
+    pub fn to_bits(&self) -> u32 {
+        // MMMT_AAAAAAAA_CCCCCCCC
+        u32::from(self.addr) << 8 | u32::from(self.cmd)
     }
 }
 
-impl Command for Rc6Cmd {
+impl Command for Rc6Command {
     fn construct(addr: u32, cmd: u32) -> Option<Self> {
-        Some(Rc6Cmd::new(addr.try_into().ok()?, cmd.try_into().ok()?))
+        Some(Rc6Command::new(addr.try_into().ok()?, cmd.try_into().ok()?))
     }
 
     fn address(&self) -> u32 {
@@ -48,6 +57,67 @@ impl Command for Rc6Cmd {
     fn protocol(&self) -> Protocol {
         Protocol::Rc6
     }
+
+    fn pulsetrain(&self, buf: &mut [u16], len: &mut usize) {
+
+        // Leader
+        buf[0] = 0;
+        buf[1] = 6 * 444;
+        // Start bit after leading pause
+        buf[2] = 2 * 444;
+        buf[3] = 444;
+
+        // Mode 000
+        buf[4] = 2 * 444;
+        buf[5] = 444;
+        buf[6] = 444;
+        buf[7] = 444;
+        buf[8] = 444;
+        buf[9] = 444;
+        // Toggle
+        //  TODO: Add toggle to command and make this configurable
+        buf[10] = 2 * 444;
+
+        let bits = self.to_bits();
+        let mut prev;
+        let mut index;
+
+        let first_bit_set = bits & (1 << 15) != 0;
+
+        if first_bit_set {
+            buf[11] = 2 * 444 + 444;
+            index = 12;
+            prev = true;
+        } else {
+            buf[11] = 2 * 444;
+            buf[12] = 444;
+            index = 13;
+            prev = false;
+        }
+
+        for b in 1..16 {
+            let cur = bits & (1 << (15 - b)) != 0;
+
+            if prev == cur {
+                buf[index] = 444;
+                buf[index+1] = 444;
+                index += 2;
+            } else {
+                buf[index] = 444 * 2;
+                index += 1;
+            }
+
+            prev = cur;
+        }
+
+        // Terminate
+        if prev == false {
+            buf[index] = 2 * 444;
+            index += 1;
+        }
+
+        *len = index;
+    }
 }
 
 #[derive(Default)]
@@ -56,11 +126,11 @@ pub struct Rc6 {
     data: u32,
     headerdata: u32,
     toggle: bool,
-    rc6_counter: u32,
+    rc6_clock: u32,
 }
 
 impl Rc6 {
-    fn interval_to_units(&self, interval: u16) -> Option<u32> {
+    pub fn interval_to_units(interval: u16) -> Option<u32> {
         let interval = u32::from(interval);
 
         for i in 1..=6 {
@@ -106,7 +176,7 @@ const RISING: bool = true;
 const FALLING: bool = false;
 
 impl ReceiverSM for Rc6 {
-    type Cmd = Rc6Cmd;
+    type Cmd = Rc6Command;
     type InternalState = Rc6State;
 
     fn create() -> Self {
@@ -118,19 +188,19 @@ impl ReceiverSM for Rc6 {
         use Rc6State::*;
 
         // Number of rc6 units since last pin edge
-        let n_units = self.interval_to_units(dt as u16);
+        let n_units = Rc6::interval_to_units(dt as u16);
 
         if let Some(units) = n_units {
-            self.rc6_counter += units;
+            self.rc6_clock += units;
         } else {
             self.reset();
         }
 
-        let odd = self.rc6_counter & 1 == 1;
+        let odd = self.rc6_clock & 1 == 1;
 
         self.state = match (self.state, rising, n_units) {
             (Idle,          FALLING,    _)          => Idle,
-            (Idle,          RISING,     _)          => { self.rc6_counter = 0; Leading },
+            (Idle,          RISING,     _)          => { self.rc6_clock = 0; Leading },
             (Leading,       FALLING,    Some(6))    => LeadingPaus,
             (Leading,       _,          _)          => Idle,
             (LeadingPaus,   RISING,     Some(2))    => HeaderData(3),
@@ -169,14 +239,14 @@ impl ReceiverSM for Rc6 {
     }
 
     fn command(&self) -> Option<Self::Cmd> {
-        Some(Rc6Cmd::from_bits(self.data, self.toggle))
+        Some(Rc6Command::from_bits(self.data, self.toggle))
     }
 
     fn reset(&mut self) {
         self.state = Rc6State::Idle;
         self.data = 0;
         self.headerdata = 0;
-        self.rc6_counter = 0;
+        self.rc6_clock = 0;
     }
 }
 
@@ -194,42 +264,3 @@ const fn range(len: u32, percent: u32) -> Range<u32> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::protocols::rc6::Rc6;
-    use crate::recv::*;
-
-    #[test]
-    fn basic() {
-        let dists = [
-            0, 108, 34, 19, 34, 19, 16, 20, 16, 19, 34, 36, 16, 37, 34, 20, 16, 19, 16, 37, 17, 19,
-            34, 19, 17, 19, 16, 19, 17, 19, 16, 20, 16, 19, 16, 37, 34, 20, 0, 108, 34, 19, 34, 19,
-            16, 20, 16, 19, 34, 36, 16, 37, 34, 20, 16, 19, 16, 37, 17, 19, 34, 19, 17, 19, 16, 19,
-            17, 19, 16, 20, 16, 19, 16, 37, 34, 20,
-        ];
-
-        let mut recv = EventReceiver::<Rc6>::new(40_000);
-        let mut edge = false;
-        let mut tot = 0;
-
-        for dist in dists.iter() {
-            edge = !edge;
-            tot += dist;
-
-            let s0 = recv.sm.state;
-
-            let cmd = recv.edge_event(edge, tot);
-
-            println!(
-                "{} ({}): {:?} -> {:?}",
-                edge as u32, dist, s0, recv.sm.state
-            );
-
-            if let Ok(Some(cmd)) = cmd {
-                println!("cmd: {:?}", cmd);
-                assert_eq!(cmd.addr, 70);
-                assert_eq!(cmd.cmd, 2);
-            }
-        }
-    }
-}

@@ -2,7 +2,6 @@
 //!
 
 use crate::Command;
-use core::marker::PhantomData;
 use core::convert::TryFrom;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -16,78 +15,11 @@ pub enum State {
     Error,
 }
 
-/// Sender
-pub trait Sender<CMD> {
-    /// Load command into the sender
-    fn load(&mut self, cmd: CMD);
-    /// Step the transfer loop
-    fn step(&mut self, ts: u32) -> State;
-    /// Reset the transmitter
-    fn reset(&mut self);
-}
-
-#[cfg(feature = "embedded-hal")]
-/// Embedded hal IR Sender
-pub trait PwmPinSender<CMD>: Sender<CMD> {
-    /// Step the transmit loop and output on `pwm`
-    fn step_pwm<PWMPIN, DUTY>(&mut self, ts: u32, pwm: &mut PWMPIN) -> State
-    where
-        PWMPIN: embedded_hal::PwmPin<Duty = DUTY>,
-    {
-        let state = self.step(ts);
-        match state {
-            State::Transmit(true) => pwm.enable(),
-            _ => pwm.disable(),
-        }
-        state
-    }
-}
-
-pub struct HalSender<PWMPIN, DUTY>
-where
-    PWMPIN: embedded_hal::PwmPin<Duty = DUTY>,
-{
-    pts: PulsetrainSender,
-    pin: PWMPIN,
-}
-
-impl<'a, PWMPIN, DUTY> HalSender<PWMPIN, DUTY>
-    where
-        PWMPIN: embedded_hal::PwmPin<Duty = DUTY>,
-{
-
-    pub fn new(samplerate: u32, pin: PWMPIN) -> Self {
-        Self {
-            pts: PulsetrainSender::new(samplerate),
-            pin
-        }
-    }
-
-    pub fn tick(&mut self) {
-        match self.pts.tick() {
-            State::Idle => {
-                self.pin.disable();
-            }
-            State::Transmit(enable) => {
-                if enable {
-                    self.pin.enable();
-                } else {
-                    self.pin.disable();
-                }
-            }
-            State::Error => {
-                self.pin.disable()
-            }
-        }
-    }
-}
-
-
 pub struct PulsetrainSender {
     ptb: PulsetrainBuffer,
     index: usize,
-    state: State,
-    last: u32,
+    pub(crate) state: State,
+    ts_lastedge: u32,
 }
 
 impl PulsetrainSender {
@@ -98,12 +30,12 @@ impl PulsetrainSender {
             ptb,
             index: 0,
             state: State::Idle,
-            last: 0,
+            ts_lastedge: 0,
         }
     }
 
     /// Load command into internal buffer
-    pub fn load(&mut self, c: impl Command) {
+    pub fn load(&mut self, c: &impl Command) {
         self.ptb.load(c);
         self.state = State::Idle;
     }
@@ -111,7 +43,7 @@ impl PulsetrainSender {
     pub fn tick(&mut self, ts: u32) -> State {
 
         if let Some(dist) = self.ptb.get(self.index) {
-            if ts.wrapping_sub(self.last) >= u32::from(dist) {
+            if ts.wrapping_sub(self.ts_lastedge) >= u32::from(dist) {
 
                 let newstate = match self.state {
                     State::Idle | State::Transmit(false) => State::Transmit(true),
@@ -121,7 +53,7 @@ impl PulsetrainSender {
                 self.index += 1;
 
                 if self.state != newstate {
-                    self.last = ts;
+                    self.ts_lastedge = ts;
                 }
             }
         } else {
@@ -155,7 +87,7 @@ impl PulsetrainBuffer {
         }
     }
 
-    pub fn load(&mut self, c: impl Command) {
+    pub fn load(&mut self, c: &impl Command) {
         c.pulsetrain(&mut self.buf, &mut self.len);
 
         // Apply the scaling on the buf
@@ -212,13 +144,3 @@ impl<'a> Iterator for PulsetrainIterator<'a> {
     }
 }
 
-pub struct PwmSender<C: Command> {
-    cmd: Option<C>,
-}
-
-impl<C: Command> PwmSender<C> {
-
-    pub fn load(&mut self, c: C) {
-        self.cmd = Some(c);
-    }
-}

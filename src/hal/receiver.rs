@@ -12,9 +12,9 @@ pub struct EventReceiver<SM, PIN> {
 }
 
 impl<PIN, PINERR, SM> EventReceiver<SM, PIN>
-where
-    SM: ReceiverSM,
-    PIN: InputPin<Error = PINERR>,
+    where
+        SM: ReceiverSM,
+        PIN: InputPin<Error = PINERR>,
 {
     /// Create a new EventReceiver
     /// `pin`: The Inputpin connected to the receiver,
@@ -58,9 +58,9 @@ pub struct PeriodicReceiver<SM, PIN> {
 }
 
 impl<PIN, PINERR, SM> PeriodicReceiver<SM, PIN>
-where
-    SM: ReceiverSM,
-    PIN: InputPin<Error = PINERR>,
+    where
+        SM: ReceiverSM,
+        PIN: InputPin<Error = PINERR>,
 {
     /// Create a new PeriodicReceiver
     /// `pin` : The gpio pin the hw is connected to

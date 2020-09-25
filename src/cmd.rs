@@ -16,7 +16,7 @@ pub trait Command {
         Protocol::Unknown
     }
 
-    fn pulsetrain(&self, buf: &mut [u16], len: &mut usize) {}
+    fn pulsetrain(&self, _buf: &mut [u16], _len: &mut usize) {}
 }
 
 #[derive(Debug, Copy, Clone)]
