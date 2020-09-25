@@ -7,62 +7,55 @@ use infrared::protocols::rc5::Rc5Command;
 use infrared::protocols::rc6::Rc6Command;
 
 #[test]
-fn bufsend() {
-
-    let cmd: NecCommand<NecStandard> = NecCommand::new(20, 10);
-
-    //let ptb = PulsetrainBuffer::from(cmd);
+fn nec() {
     let mut ptb = PulsetrainBuffer::with_samplerate(40_000);
 
-    ptb.load(&cmd);
+    for address in 0..255 {
+        for cmdnum in 0..255 {
+            let cmd: NecCommand<NecStandard> = NecCommand::new(address, cmdnum);
+            ptb.load(&cmd);
+            let buf = ptb.into_iter().map(u32::from).collect::<Vec<_>>();
+            let mut brecv: BufferedReceiver<Nec> = BufferedReceiver::new(&buf, 40_000);
 
-    for ts in &ptb {
-        println!("{:?}", ts);
+            let cmdres = brecv.next().unwrap();
+            assert_eq!(cmd.addr, cmdres.addr);
+            assert_eq!(cmd.cmd, cmdres.cmd);
+        }
     }
-
-    let buf = ptb.into_iter().map(u32::from).collect::<Vec<_>>();
-
-    let mut brecv: BufferedReceiver<Nec> = BufferedReceiver::new(&buf, 40_000);
-
-    let cmd = brecv.next();
-    println!("{:?}", cmd);
 }
 
 #[test]
-fn test_bufsend_rc5() {
-    let cmd: Rc5Command = Rc5Command::new(20, 10, false);
-
-    //let ptb = PulsetrainBuffer::from(cmd);
+fn rc5() {
     let mut ptb = PulsetrainBuffer::with_samplerate(40_000);
 
-    ptb.load(&cmd);
-
-    let buf = ptb.into_iter().map(u32::from).collect::<Vec<_>>();
-    println!("{:?}", buf);
-
-    let mut brecv: BufferedReceiver<Rc5> = BufferedReceiver::new(&buf, 40_000);
-
-    let cmd = brecv.next();
-    println!("{:?}", cmd);
+    for address in 0..32 {
+        for cmdnum in 0..64 {
+            let cmd: Rc5Command = Rc5Command::new(address, cmdnum, false);
+            ptb.load(&cmd);
+            let buf = ptb.into_iter().map(u32::from).collect::<Vec<_>>();
+            let mut brecv: BufferedReceiver<Rc5> = BufferedReceiver::new(&buf, 40_000);
+            let cmdres = brecv.next().unwrap();
+            assert_eq!(cmd.addr, cmdres.addr);
+            assert_eq!(cmd.cmd, cmdres.cmd);
+        }
+    }
 }
 
 #[test]
-fn test_bufsend_rc6() {
-    let cmd: Rc6Command = Rc6Command::new(70, 2);
-
+fn rc6() {
     let mut ptb = PulsetrainBuffer::with_samplerate(40_000);
 
-    ptb.load(&cmd);
-
-    let buf = ptb.into_iter().map(u32::from).collect::<Vec<_>>();
-    println!("{:?}", buf);
-
-    let mut brecv: BufferedReceiver<Rc6> = BufferedReceiver::new(&buf, 40_000);
-
-    let cmdres = brecv.next().unwrap();
-    assert_eq!(cmd.addr, cmdres.addr);
-    assert_eq!(cmd.cmd, cmdres.cmd);
-    println!("{:?}", cmd);
+    for address in 0..255 {
+        for cmdnum in 0..255 {
+            let cmd: Rc6Command = Rc6Command::new(address, cmdnum);
+            ptb.load(&cmd);
+            let buf = ptb.into_iter().map(u32::from).collect::<Vec<_>>();
+            let mut brecv: BufferedReceiver<Rc6> = BufferedReceiver::new(&buf, 40_000);
+            let cmdres = brecv.next().unwrap();
+            assert_eq!(cmd.addr, cmdres.addr);
+            assert_eq!(cmd.cmd, cmdres.cmd);
+        }
+    }
 }
 
 #[test]
