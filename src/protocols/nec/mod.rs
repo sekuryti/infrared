@@ -5,13 +5,11 @@ use core::{convert::TryInto, marker::PhantomData};
 use crate::{cmd::Protocol, Command};
 
 pub mod receiver;
-pub mod send;
 #[cfg(test)]
 mod tests;
 
 #[doc(inline)]
 pub use receiver::Nec;
-pub use send::NecTypeSender;
 
 /// Standard Nec protocol
 #[derive(Debug, Copy, Clone, PartialEq)]
