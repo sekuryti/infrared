@@ -1,17 +1,15 @@
-//! Rc6
+//! Philips Rc6
 
-use core::convert::TryInto;
 use core::ops::Range;
 
 use crate::{
-    cmd::Protocol,
     recv::{Error, ReceiverSM, State},
-    Command,
 };
 
-mod command;
-pub use command::Rc6Command;
+mod cmd;
+pub use cmd::Rc6Command;
 
+#[cfg(test)]
 mod tests;
 
 #[derive(Default)]
@@ -21,11 +19,12 @@ pub struct Rc6 {
     data: u32,
     headerdata: u32,
     toggle: bool,
-    rc6_clock: u32,
+    clock: u32,
 }
 
 impl Rc6 {
     pub fn interval_to_units(interval: u16) -> Option<u32> {
+
         let interval = u32::from(interval);
 
         for i in 1..=6 {
@@ -62,7 +61,7 @@ impl From<Rc6State> for State {
             Idle => State::Idle,
             Done => State::Done,
             Rc6Err(err) => State::Error(err),
-            Leading | LeadingPaus | HeaderData(_) | Trailing | Data(_) => State::Receiving,
+            _ => State::Receiving,
         }
     }
 }
@@ -85,17 +84,18 @@ impl ReceiverSM for Rc6 {
         // Number of rc6 units since last pin edge
         let n_units = Rc6::interval_to_units(dt as u16);
 
+        // Reconstruct the clock
         if let Some(units) = n_units {
-            self.rc6_clock += units;
+            self.clock += units;
         } else {
             self.reset();
         }
 
-        let odd = self.rc6_clock & 1 == 1;
+        let odd = self.clock & 1 == 1;
 
         self.state = match (self.state, rising, n_units) {
             (Idle,          FALLING,    _)          => Idle,
-            (Idle,          RISING,     _)          => { self.rc6_clock = 0; Leading },
+            (Idle,          RISING,     _)          => { self.clock = 0; Leading },
             (Leading,       FALLING,    Some(6))    => LeadingPaus,
             (Leading,       _,          _)          => Idle,
             (LeadingPaus,   RISING,     Some(2))    => HeaderData(3),
@@ -113,8 +113,8 @@ impl ReceiverSM for Rc6 {
             (HeaderData(n), _,          Some(_))    => HeaderData(n),
             (HeaderData(_), _,          None)       => Idle,
 
-            (Trailing,      FALLING,    Some(3))    => { self.toggle = false; Data(15) }
-            (Trailing,      RISING,     Some(2))    => { self.toggle = true; Data(15) }
+            (Trailing,      FALLING,    Some(3))    => { self.toggle = true; Data(15) }
+            (Trailing,      RISING,     Some(2))    => { self.toggle = false; Data(15) }
             (Trailing,      FALLING,    Some(1))    => Trailing,
             (Trailing,      _,          _)          => Idle,
 
@@ -127,7 +127,7 @@ impl ReceiverSM for Rc6 {
             (Data(_),       _,          None)       => Rc6Err(Error::Data),
 
             (Done,          _,          _)          => Done,
-            (Rc6Err(err),    _,          _)         => Rc6Err(err),
+            (Rc6Err(err),   _,          _)          => Rc6Err(err),
         };
 
         self.state
@@ -141,7 +141,7 @@ impl ReceiverSM for Rc6 {
         self.state = Rc6State::Idle;
         self.data = 0;
         self.headerdata = 0;
-        self.rc6_clock = 0;
+        self.clock = 0;
     }
 }
 

@@ -94,8 +94,9 @@ extern crate std;
 pub mod protocols;
 
 mod recv;
-pub use recv::{BufferedReceiver, EventReceiver, PeriodicReceiver, ReceiverSM};
-
+pub use recv::{EventReceiver, PeriodicReceiver, ReceiverSM};
+mod bufrecv;
+pub use bufrecv::BufferReceiver;
 pub mod sender;
 
 mod remotecontrol;

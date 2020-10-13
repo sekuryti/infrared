@@ -6,6 +6,7 @@ use core::convert::TryInto;
 pub use receiver::Rc5;
 
 pub mod receiver;
+#[cfg(test)]
 mod tests;
 
 const ADDR_MASK: u16 = 0b_0000_0111_1100_0000;
@@ -77,7 +78,7 @@ impl Command for Rc5Command {
         Protocol::Rc5
     }
 
-    fn pulsetrain(&self, buf: &mut [u16], len: &mut usize) {
+    fn to_pulsetrain(&self, buf: &mut [u16], len: &mut usize) {
 
         let bits = self.to_bits();
 

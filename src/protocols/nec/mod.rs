@@ -57,7 +57,7 @@ impl<VARIANT: NecVariant> Command for NecCommand<VARIANT> {
         Protocol::Nec
     }
 
-    fn pulsetrain(&self, b: &mut [u16], len: &mut usize) {
+    fn to_pulsetrain(&self, b: &mut [u16], len: &mut usize) {
         b[0] = 0;
         b[1] = VARIANT::TIMING.hh as u16;
         b[2] = VARIANT::TIMING.hl as u16;
