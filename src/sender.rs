@@ -88,11 +88,11 @@ impl PulsetrainBuffer {
     }
 
     pub fn load(&mut self, c: &impl Command) {
-        c.pulsetrain(&mut self.buf, &mut self.len);
+        c.to_pulsetrain(&mut self.buf, &mut self.len);
 
         // Apply the scaling on the buf
-        for i in 0 .. self.len {
-            self.buf[i] = self.buf[i] / self.scaler;
+        for elem in &mut self.buf[..self.len] {
+            *elem /= self.scaler;
         }
     }
 
@@ -104,7 +104,7 @@ impl PulsetrainBuffer {
 impl<C: Command> From<C> for PulsetrainBuffer {
     fn from(c: C) -> Self {
         let mut ptb = PulsetrainBuffer::new();
-        c.pulsetrain(&mut ptb.buf, &mut ptb.len);
+        c.to_pulsetrain(&mut ptb.buf, &mut ptb.len);
         ptb
     }
 }

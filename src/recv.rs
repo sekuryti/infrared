@@ -20,9 +20,9 @@ impl<SM: ReceiverSM> EventReceiver<SM> {
     }
 
     /// Event happened
-    pub fn edge_event(&mut self, edge: bool, delta_samples: u32) -> Result<Option<SM::Cmd>, Error> {
+    pub fn edge_event<T: Into<u32>>(&mut self, edge: bool, delta_samples: T) -> Result<Option<SM::Cmd>, Error> {
         // Convert to micro seconds
-        let dt_us = delta_samples * self.precalc_multiplier;
+        let dt_us = delta_samples.into() * self.precalc_multiplier;
 
         // Update state machine
         let state: State = self.sm.event(edge, dt_us).into();
@@ -82,58 +82,6 @@ impl<SM: ReceiverSM> PeriodicReceiver<SM> {
     }
 }
 
-/// Receiver for decoding a captured pulse train
-pub struct BufferedReceiver<'a, SM> {
-    sm: SM,
-    buf: &'a [u32],
-    i: usize,
-    precalc_mult: u32,
-}
-
-impl<'a, SM: ReceiverSM> BufferedReceiver<'a, SM> {
-    pub fn new(buf: &'a [u32], samplerate: u32) -> Self {
-        Self {
-            buf,
-            i: 0,
-            sm: SM::create(),
-            precalc_mult: 1_000_000 / samplerate,
-        }
-    }
-}
-
-impl<'a, SM: ReceiverSM> Iterator for BufferedReceiver<'a, SM> {
-    type Item = SM::Cmd;
-
-    /// Get the next Command
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if self.i == self.buf.len() {
-                break None;
-            }
-
-            let pos_edge = self.i & 0x1 == 0;
-            let dt_us = self.buf[self.i] * self.precalc_mult;
-            self.i += 1;
-
-            let state: State = self.sm.event(pos_edge, dt_us).into();
-
-            match state {
-                State::Idle | State::Receiving => {
-                    continue;
-                }
-                State::Done => {
-                    let cmd = self.sm.command();
-                    self.sm.reset();
-                    break cmd;
-                }
-                State::Error(_) => {
-                    self.sm.reset();
-                    break None;
-                }
-            }
-        }
-    }
-}
 
 /// Receiver state machine
 pub trait ReceiverSM {
